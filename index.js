@@ -2,10 +2,10 @@ const http = require("http");
 const app = require("express")();
 app.get("/", (req,res)=> res.sendFile(__dirname + "/index.html"))
 
-app.listen(9091, ()=>console.log("Listening on http port 9092"))
+app.listen(9091, ()=>console.log("Listening on http port 9092")) //PUERTO DEL CLIENTE
 const websocketServer = require("websocket").server
 const httpServer = http.createServer();
-httpServer.listen(9090, () => console.log("Listening on 9393"))
+httpServer.listen(9090, () => console.log("Listening on 9393")) //PUERTO DEL SERVER
 //hashmap clients
 const clients = {};
 const games = {};
