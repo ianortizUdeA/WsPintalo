@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comunicaciones 2</title>
+
+    <style type="text/css">
+
+        .redondeado {
+            border-radius: 5px;
+            border: 2px solid #0016b0;
+        }
+
+        body {
+            color: #4a0707;
+            background-color: #b5cdeb
+        }
+
+
+        .boton_personalizado {
+
+            border-radius: 2px;
+            border: 2px solid #0016b0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Pintalo</h1>
+
+    <button id='btnCreate'>Nuevo Juego</button>
+    <button id='btnJoin'>Unirse</button>
+
+
+    <input type='text' class='redondeado' id='txtGameId'>
+    <h1>            </h1>
+
+    <div><h2>El número de jugadores es 3 </h2></div>
+
+
+    <div id='divPlayers'></div>
+    <div id='divBoard'></div>
+
+    <!--ID-->
+    <p>El Id para unirse al juego es juego es:</p>
+    <p id="publicID"></p>
+
+
+    <script>
+        //HTML elements
+        let clientId = null;
+        let gameId = null;
+        let playerColor = null;
+
+        let ws = new WebSocket("ws://localhost:9090")
+        const btnCreate = document.getElementById("btnCreate");
+        const btnJoin = document.getElementById("btnJoin");
+        const txtGameId = document.getElementById("txtGameId");
+        const divPlayers = document.getElementById("divPlayers");
+        const divBoard = document.getElementById("divBoard");
+
+        //functions to have a timer
+
+        function changeValue() {
+        document.getElementById("time").innerHTML = --value;
+        }
+  
+        var timerInterval = null;
+        function startGame() {
+            value = 15;
+            timerInterval = setInterval(changeValue, 1000);
+            setTimeout(stopGame, 16000);
+            //Añadir metodos para cambiar los cuadros 
+        }
+
+        function stopGame() {
+            clearInterval(timerInterval); //Stops the timer
+
+        }
+
+    
+        //wiring events
+        btnJoin.addEventListener("click", e => {
+
+            if (gameId === null)
+                gameId = txtGameId.value;
+            
+            const payLoad = {
+                "method": "join",
+                "clientId": clientId,
+                "gameId": gameId
+            }
+
+            ws.send(JSON.stringify(payLoad));
+
+        })
+
+        btnCreate.addEventListener("click", e => {
+
+            const payLoad = {
+                "method": "create",
+                "clientId": clientId
+            }
+
+            ws.send(JSON.stringify(payLoad));
+
+        })
+
+        ws.onmessage = message => {
+            //message.data
+            const response = JSON.parse(message.data);
+            //connect
+            if (response.method === "connect"){
+                clientId = response.clientId;
+            }
+
+            //create
+            if (response.method === "create"){
+                gameId = response.game.id;
+                document.getElementById("publicID").innerHTML = response.game.id; 
+            }
+
+
+            //update
+            if (response.method === "update"){
+                //{1: "red", 1}
+                if (!response.game.state) return;
+                for(const b of Object.keys(response.game.state))
+                {
+                    const color = response.game.state[b];
+                    const ballObject = document.getElementById("ball" + b);
+                    ballObject.style.backgroundColor = color
+                }
+
+            }
+
+            //join
+            if (response.method === "join"){
+                const game = response.game;
+
+                let i = 0;
+                while(divPlayers.firstChild)
+                    divPlayers.removeChild (divPlayers.firstChild)
+
+                game.clients.forEach (c => {
+                    i = i+1
+                    const d = document.createElement("div");
+                    d.style.width = "200px";
+                    d.style.background = c.color
+                    d.textContent = "Jugador " + i;
+                    divPlayers.appendChild(d);
+
+                    if (c.clientId === clientId) playerColor = c.color;
+                })
+
+
+                while(divBoard.firstChild)
+                divBoard.removeChild (divBoard.firstChild)
+
+                for (let i = 0; i < game.balls; i++){
+
+                    const b = document.createElement("button");
+                    b.id = "ball" + (i +1);
+                    b.tag = i+1
+                    b.textContent = i+1
+                    b.style.width = "150px"
+                    b.style.height = "150px"
+                    b.addEventListener("click", e => {
+                        b.style.background = playerColor
+                        const payLoad = {
+                            "method": "play",
+                            "clientId": clientId,
+                            "gameId": gameId,
+                            "ballId": b.tag,
+                            "color": playerColor
+                        }
+                        ws.send(JSON.stringify(payLoad))
+                    })
+                    divBoard.appendChild(b);
+                }
+            }
+        }
+        
+    </script>
+</body>
+</html>
